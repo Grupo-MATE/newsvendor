@@ -6,10 +6,16 @@ q = 2.0 #same day price
 #array de vectores de cuts. Arranca en la lower bound
 cuts = [[0.0;0.0]];
 
+#aca guardo solo los multiplicadores
+duals = [0.0];
+
+#aca guardo los ruidos que fueron saliendo
+noises = Array{Float64}(undef,0);
+
 #condicion inicial de stock
 x0=0.0;
 
-for l=1:100
+for l=1:1000
     #resuelvo el primer paso
     model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
 
@@ -30,34 +36,43 @@ for l=1:100
 
     x=value(stock)+value(reserve);
 
-    #resuelvo para todos un ruido en el segundo paso y agrego un corte
+    #resuelvo para un ruido en el segundo paso y agrego un corte
     demand=rand(DiscreteUniform(0,100));
+    push!(noises,demand)
 
-    local_cuts = [];
 
     model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
 
     @variable(model,shortage>=0);
     @variable(model,stock>=0);
 
-    @constraint(model,stock-demand+shortage>=0);
+    fix_x = @constraint(model,x-demand+shortage>=0);
 
-    fix_x = @constraint(model,stock==x);
+#    fix_x = @constraint(model,stock==x);
 
     @objective(model,Min,q*shortage);
 
     optimize!(model)
 
     beta = objective_value(model);
+    #cambio el signo del multiplicador por que es >= en la constraint
     lambda = dual(fix_x)
 
-    new_cut = [beta-lambda*x;lambda]
+    push!(duals,lambda)
 
-    #update all cuts for averaging
-
+    #update all previous cuts for averaging
     for j=1:length(cuts)
-        cuts[j] = 0.9 * cuts[j];
+        cuts[j] = (l-1)/l * cuts[j];
     end
+
+    pik = similar(noises);
+    #genero el new cut recorriendo todos los ruidos
+    for j=1:length(noises)
+        aux = [pi*(noises[j]-x) for pi in duals]
+        pik[j] = maximum(aux);
+    end
+
+    new_cut  = 1/l * [ sum(pik.*noises); -sum(pik) ];
 
     push!(cuts,new_cut);
 
