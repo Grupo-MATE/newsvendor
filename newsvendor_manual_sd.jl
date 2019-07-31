@@ -69,7 +69,8 @@ for l=1:1000
     #genero el new cut recorriendo todos los ruidos
     for j=1:length(noises)
         aux = [pi*(noises[j]-x) for pi in duals]
-        pik[j] = maximum(aux);
+        _, ix = findmax(aux)
+        pik[j] = duals[ix];
     end
 
     new_cut  = 1/l * [ sum(pik.*noises); -sum(pik) ];

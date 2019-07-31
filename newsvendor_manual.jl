@@ -9,7 +9,7 @@ cuts = [[0.0;0.0]];
 #condicion inicial de stock
 x0=0.0;
 
-for i=1:10
+for i=1:100
     #resuelvo el primer paso
     model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
 
