@@ -7,7 +7,7 @@ q = 2.0 #same day price
 cuts = [[0.0;0.0]];
 
 #aca guardo solo los multiplicadores
-duals = [0.0];
+duals = Set{Float64}();
 
 #aca guardo los ruidos que fueron saliendo
 noises = Array{Float64}(undef,0);
@@ -16,6 +16,8 @@ noises = Array{Float64}(undef,0);
 x0=0.0;
 
 @showprogress 1 "Computing..." for l=1:1000
+    global cuts
+    
     #resuelvo el primer paso
     model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0))
 
@@ -23,9 +25,11 @@ x0=0.0;
     @variable(model,stock>=0);
     @variable(model,z);
 
+    cut_constraints = [];
     for k=1:length(cuts)
         cut=cuts[k]
-        @constraint(model,z>=cut[1]+cut[2]*(stock+reserve));
+        c=@constraint(model,z>=cut[1]+cut[2]*(stock+reserve));
+        push!(cut_constraints,c);
     end
 
     fix_x = @constraint(model,stock==x0);
@@ -33,6 +37,12 @@ x0=0.0;
     @objective(model,Min,p*reserve+z);
 
     optimize!(model)
+
+    #purge cuts!
+    multipliers = [dual(c) for c in cut_constraints];
+    idx = filter(k->multipliers[k]!=0,(1:length(cuts)));
+    cuts = cuts[idx];
+
 
     x=value(stock)+value(reserve);
 
@@ -68,9 +78,9 @@ x0=0.0;
     pik = similar(noises);
     #genero el new cut recorriendo todos los ruidos
     for j=1:length(noises)
-        aux = [pi*(noises[j]-x) for pi in duals]
-        _, ix = findmax(aux)
-        pik[j] = duals[ix];
+        aux = [(pi*(noises[j]-x),pi) for pi in duals]
+        _, ix = findmax([a[1] for a in aux])
+        pik[j] = aux[ix][2];
     end
 
     new_cut  = 1/l * [ sum(pik.*noises); -sum(pik) ];
