@@ -1,4 +1,4 @@
-using Distributions, JuMP, Gurobi
+using Distributions, JuMP, Gurobi, ProgressMeter
 
 p = 1.0 #day ahead price
 q = 2.0 #same day price
@@ -15,9 +15,9 @@ noises = Array{Float64}(undef,0);
 #condicion inicial de stock
 x0=0.0;
 
-for l=1:1000
+@showprogress 1 "Computing..." for l=1:1000
     #resuelvo el primer paso
-    model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
+    model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0))
 
     @variable(model,reserve>=0);
     @variable(model,stock>=0);
@@ -41,7 +41,7 @@ for l=1:1000
     push!(noises,demand)
 
 
-    model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
+    model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0))
 
     @variable(model,shortage>=0);
     @variable(model,stock>=0);
