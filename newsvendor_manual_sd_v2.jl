@@ -21,7 +21,7 @@ duals = Array{Float64}(undef,0);
 #condicion inicial de stock
 x0=0.0;
 
-@showprogress 1 "Computing..." for l=1:500
+@showprogress 1 "Computing..." for l=1:1000
     global cuts
 
     #resuelvo el primer paso
@@ -90,7 +90,7 @@ x0=0.0;
     @variable(aux, x2>=0)
 
     cut_constraints = [];
-    println("x=$x")
+
     for k=1:length(cuts)
         cut=cuts[k]
         c=@constraint(aux,z2>=cut[1]+cut[2]*(x2));
@@ -105,43 +105,39 @@ x0=0.0;
     beta_est = objective_value(aux)
     lambda_est = dual.(fix_x2)
 
-#    println(beta_est)
-#    println(lambda_est)
-#    println(beta)
-#    println(lambda)
+
 
     #update all previous cuts for averaging
     for j=1:length(cuts)
-        cuts[j] = (l)/(l+1) * cuts[j];
+        cuts[j] = (l-1)/(l) * cuts[j];
     end
 
 
 
 
-    new_cut = 1/(l+1)*[beta+lambda*x;-lambda]+(l)/(l+1)*[beta_est+lambda_est*x;-lambda_est]
+    new_cut = 1/(l)*[beta+lambda*x;-lambda]+(l-1)/(l)*[beta_est+lambda_est*x;-lambda_est]
 
     push!(cuts,new_cut);
-#    println(new_cut)
 end
 
 #
 # #resuelvo una vez mas para hallar el costo optimo
-# model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
-#
-# @variable(model,reserve>=0);
-# @variable(model,stock>=0);
-# @variable(model,z);
-#
-# for i=1:length(cuts)
-#     cut=cuts[i]
-#     @constraint(model,z>=cut[1]+cut[2]*(stock+reserve));
-# end
-#
-# fix_x = @constraint(model,stock==x0);
-#
-# @objective(model,Min,p*reserve+z);
-#
-# optimize!(model)
-#
-# x=value(stock)+value(reserve);
-# costo = objective_value(model);
+model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
+
+@variable(model,reserve>=0);
+@variable(model,stock>=0);
+@variable(model,z);
+
+for i=1:length(cuts)
+    cut=cuts[i]
+    @constraint(model,z>=cut[1]+cut[2]*(stock+reserve));
+end
+
+fix_x = @constraint(model,stock==x0);
+
+@objective(model,Min,p*reserve+z);
+
+optimize!(model)
+
+x=value(stock)+value(reserve);
+costo = objective_value(model);
