@@ -1,7 +1,9 @@
 using Distributions, JuMP, Gurobi, ProgressMeter
 
+gurobi_env = Gurobi.Env()
+
 p = 1.0 #day ahead price
-q = 2.0 #same day price
+q = 3.0 #same day price
 
 #array de vectores de cuts. Arranca en la lower bound
 cuts = [[0.0;0.0]];
@@ -15,11 +17,11 @@ noises = Array{Float64}(undef,0);
 #condicion inicial de stock
 x0=0.0;
 
-@showprogress 1 "Computing..." for l=1:1000
+@showprogress 1 "Computing..." for l=1:100
     global cuts
-    
+
     #resuelvo el primer paso
-    model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0))
+    model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0,gurobi_env))
 
     @variable(model,reserve>=0);
     @variable(model,stock>=0);
@@ -39,9 +41,9 @@ x0=0.0;
     optimize!(model)
 
     #purge cuts!
-    multipliers = [dual(c) for c in cut_constraints];
-    idx = filter(k->multipliers[k]!=0,(1:length(cuts)));
-    cuts = cuts[idx];
+    #multipliers = [dual(c) for c in cut_constraints];
+    #idx = filter(k->multipliers[k]!=0,(1:length(cuts)));
+    #cuts = cuts[idx];
 
 
     x=value(stock)+value(reserve);
@@ -51,7 +53,7 @@ x0=0.0;
     push!(noises,demand)
 
 
-    model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0))
+    model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0,gurobi_env))
 
     @variable(model,shortage>=0);
     @variable(model,stock>=0);
@@ -86,12 +88,14 @@ x0=0.0;
     new_cut  = 1/l * [ sum(pik.*noises); -sum(pik) ];
 
     push!(cuts,new_cut);
+    println(cuts)
+    println(x)
 
 end
 
 
 #resuelvo una vez mas para hallar el costo optimo
-model = JuMP.Model(with_optimizer(Gurobi.Optimizer))
+model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0,gurobi_env))
 
 @variable(model,reserve>=0);
 @variable(model,stock>=0);
