@@ -3,7 +3,7 @@ using Distributions, JuMP, Gurobi, ProgressMeter
 gurobi_env = Gurobi.Env()
 
 p = 1.0 #day ahead price
-q = 1.5 #same day price
+q = 2.0 #same day price
 
 #array de vectores de cuts. Arranca en la lower bound
 cuts = [[0.0;0.0]];
@@ -21,7 +21,7 @@ duals = Array{Float64}(undef,0);
 #condicion inicial de stock
 x0=0.0;
 
-@showprogress 1 "Computing..." for l=1:1000
+@showprogress 1 "Computing..." for l=1:5000
     global cuts
 
     #resuelvo el primer paso
@@ -49,6 +49,9 @@ x0=0.0;
     #idx = filter(k->multipliers[k]!=0,(1:length(cuts)));
     #cuts = cuts[idx];
 
+    if l>40
+        cuts = cuts[end-19:end]
+    end
 
     x=value(stock)+value(reserve);
     push!(explored_states,x)
@@ -108,9 +111,9 @@ x0=0.0;
 
 
     #update all previous cuts for averaging
-    for j=1:length(cuts)
-        cuts[j] = (l-1)/(l) * cuts[j];
-    end
+    #for j=1:length(cuts)
+    #    cuts[j] = (l-1)/(l) * cuts[j];
+    #end
 
 
 

@@ -3,7 +3,7 @@ using Distributions, JuMP, Gurobi
 gurobi_env = Gurobi.Env()
 
 p = 1.0 #day ahead price
-q = 1.5 #same day price
+q = 2.0 #same day price
 
 #array de vectores de cuts. Arranca en la lower bound
 cuts = [[0.0;0.0]];
@@ -11,7 +11,7 @@ cuts = [[0.0;0.0]];
 #condicion inicial de stock
 x0=0.0;
 
-for i=1:100
+@showprogress for i=1:40
     #resuelvo el primer paso
     model = JuMP.Model(with_optimizer(Gurobi.Optimizer,OutputFlag=0,gurobi_env))
 
